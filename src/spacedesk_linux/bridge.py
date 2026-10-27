@@ -637,23 +637,13 @@ VIEWER_HTML = """<!DOCTYPE html>
      touch-action:none;user-select:none;-webkit-user-select:none;display:block;
      image-rendering:auto;}
   html,body,#c,#wrap{cursor:none;}
-  /* boutons overlay bien visibles, hors flux -> ne decalent RIEN */
-  #fs,#mode{position:fixed;top:8px;z-index:2147483647;width:42px;height:42px;
-      border:2px solid rgba(255,255,255,0.92);border-radius:9px;
-      background:rgba(0,0,0,0.62);color:#fff;font-size:22px;line-height:38px;
-      text-align:center;cursor:pointer;padding:0;opacity:1;
-      box-shadow:0 2px 8px rgba(0,0,0,.5);-webkit-tap-highlight-color:transparent;}
-  #fs{left:8px;} #mode{left:58px;}
-  #fs:active,#mode:active{background:rgba(0,0,0,0.85);}
-  #status{position:fixed;top:12px;left:115px;right:12px;padding:12px;
+  #status{position:fixed;top:12px;left:12px;right:12px;padding:12px;
     background:rgba(0,0,0,.85);color:white;font:16px sans-serif;z-index:2147483647;}
   #retry{margin-left:12px;padding:6px;cursor:pointer;}
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="c" width="1920" height="1080"></canvas></div>
-<button id="fs" title="Pantalla completa">&#9906;</button>
-<button id="mode" title="Modo panel táctil">&#128433;</button>
 <div id="status"><span id="message">Conectando al visor...</span>
 <button id="retry" onclick="location.reload()">Reintentar</button></div>
 <script>
@@ -675,23 +665,6 @@ VIEWER_HTML = """<!DOCTYPE html>
       if(r&&r.catch) r.catch(function(err){ console.error('requestFullscreen rejete:',err); });
     }catch(e){ console.error('requestFullscreen exception:',e); }
   }
-  function exitFs(){
-    var fn=document.exitFullscreen||document.webkitExitFullscreen;
-    if(fn){ try{ fn.call(document); }catch(e){ console.error(e); } }
-  }
-  var fsBtn=document.getElementById('fs');
-  function updateFsBtn(){
-    // toujours visible (opacite geree par le CSS) ; seule l'icone change
-    if(inFs()){ fsBtn.innerHTML='&#10005;'; fsBtn.title='Salir de pantalla completa'; }
-    else{ fsBtn.innerHTML='&#9974;'; fsBtn.title='Pantalla completa'; }
-  }
-  fsBtn.addEventListener('click',function(e){
-    e.preventDefault(); e.stopPropagation();
-    if(inFs()) exitFs(); else enterFs();
-  });
-  document.addEventListener('fullscreenchange',updateFsBtn);
-  document.addEventListener('webkitfullscreenchange',updateFsBtn);
-  updateFsBtn();
   // Passage auto au 1er pointerdown (geste utilisateur), sans bloquer l'input.
   function firstTap(){ if(!inFs()) enterFs(); window.removeEventListener('pointerdown',firstTap,true); }
   window.addEventListener('pointerdown',firstTap,true);
@@ -769,16 +742,8 @@ VIEWER_HTML = """<!DOCTYPE html>
 
   function post(obj){ try{ fetch('/input',{method:'POST',body:JSON.stringify(obj),keepalive:true}); }catch(e){} }
 
-  // ---- Bascule pave tactile (relatif) <-> absolu ----
+  // ---- Mode pave tactile (relatif) ----
   var PAD=true;
-  var modeBtn=document.getElementById('mode');
-  function updateModeBtn(){
-    modeBtn.innerHTML=PAD?'&#128433;':'&#128070;';
-    modeBtn.title=PAD?'Panel táctil: arrastrar mueve el cursor; tocar hace clic; dos dedos hacen clic derecho o desplazan. Cambiar a modo absoluto'
-                     :'Absoluto: tocar indica la posición exacta. Cambiar a panel táctil';
-  }
-  modeBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); PAD=!PAD; updateModeBtn(); });
-  updateModeBtn();
 
   // mode absolu : throttle des move
   var lastSend=0, MIN_MS=33, pendingAbs=null, absRAF=false;

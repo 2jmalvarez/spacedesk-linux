@@ -58,9 +58,15 @@ class ClientTests(unittest.TestCase):
         self.assertIn('<html lang="es" translate="no">', html)
         self.assertIn('<meta name="google" content="notranslate">', html)
         self.assertNotIn('lang="fr"', html)
-        self.assertIn('title="Pantalla completa"', html)
-        self.assertIn("fsBtn.title='Salir de pantalla completa'", html)
-        self.assertIn("modeBtn.title=PAD?'Panel táctil:", html)
+
+    def test_viewer_has_no_overlay_controls_and_keeps_touchpad_mode(self):
+        html = self.client.VIEWER_HTML
+        self.assertNotIn('id="fs"', html)
+        self.assertNotIn('id="mode"', html)
+        self.assertNotIn('fsBtn', html)
+        self.assertNotIn('modeBtn', html)
+        self.assertIn('var PAD=true;', html)
+        self.assertIn("window.addEventListener('pointerdown',firstTap,true)", html)
 
     def test_intentional_close_notifies_windows_before_socket_shutdown(self):
         client = self.client
