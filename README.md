@@ -20,6 +20,8 @@ Linux sigue funcionando normalmente en las pantallas que no selecciones.
 - Guarda la IP de Windows, la selección y la calidad de imagen.
 - Abre un visor en pantalla completa sobre cada destino elegido, sin duplicados.
 - Muestra estados de conexión y errores; no entra en bucles de reconexión.
+- Un solo botón alterna entre **Conectar** y **Desconectar** según el estado real.
+- Visor en español, sin sugerencias automáticas de traducción de Chrome.
 - Actualiza la lista al conectar/quitar monitores, además del botón **Actualizar**.
 - Al desconectar, avisa al driver de Windows antes de cerrar la conexión.
 
@@ -140,13 +142,20 @@ Abrir **Aplicaciones → spacedesk Linux**, o ejecutar:
 2. Usar **Identificar** para reconocer los monitores.
 3. Seleccionar los destinos en el mapa o con las casillas.
 4. Elegir cantidad, resoluciones y calidad JPEG.
-5. Pulsar **Conectar / aplicar**.
+5. Pulsar **Conectar**.
 6. En Windows, elegir **Extender estas pantallas** si fuera necesario y ordenar su disposición.
 
 **Guardar configuración** conserva preferencias, pero no aplica los cambios a las
-conexiones actuales. **Conectar / aplicar** guarda y aplica. Cerrar el panel deja los
-visores abiertos; **Desconectar todo** detiene las pantallas de Windows y cierra solo
-los navegadores aislados de esta app.
+conexiones actuales. El único botón de conexión muestra **Conectar** cuando no hay
+pantallas activas y **Desconectar** cuando hay alguna conectada o en proceso de
+conexión. Mientras procesa una operación queda deshabilitado para evitar dobles clics.
+Para aplicar cambios a una sesión activa, pulsar **Desconectar** y luego **Conectar**.
+Cerrar el panel deja los visores abiertos; **Desconectar** detiene las pantallas de
+Windows y cierra solo los navegadores aislados de esta app.
+
+La página del visor declara español y evita traducción automática. Además, al abrir
+un visor se desactiva la sugerencia de traducción en su perfil aislado. **No se cambia
+la configuración de tu Chrome habitual** ni se alteran perfiles mientras están abiertos.
 
 ## Detección y selección de monitores
 

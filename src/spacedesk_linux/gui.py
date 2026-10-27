@@ -68,6 +68,9 @@ class ControlWindow(Gtk.ApplicationWindow):
         self.displays, self.config = displays, config
         self.rows = {}
         self.busy, self.polling, self.updating, self.closed = False, False, False, False
+        self.has_connections = False
+        self.connection_states_known = False
+        self.status_generation = 0
         self.hotplug_timer = None
         self.display = Gdk.Display.get_default()
         self.monitor_handlers = [self.display.connect(name, self.monitors_changed)
@@ -117,17 +120,16 @@ class ControlWindow(Gtk.ApplicationWindow):
         actions = Gtk.Box(spacing=8)
         self.save_button = Gtk.Button(label="Guardar configuración")
         self.save_button.connect("clicked", self.save_settings)
-        self.stop_button = Gtk.Button(label="Desconectar todo")
-        self.stop_button.connect("clicked", self.disconnect_all)
-        self.connect_button = Gtk.Button(label="Conectar / aplicar")
-        self.connect_button.get_style_context().add_class("suggested-action")
-        self.connect_button.connect("clicked", self.connect_all)
-        for button in (self.save_button, self.stop_button, self.connect_button):
+        self.connection_button = Gtk.Button(label="Conectar")
+        self.connection_button.set_sensitive(False)
+        self.connection_button.get_style_context().add_class("suggested-action")
+        self.connection_button.connect("clicked", self.toggle_connection)
+        for button in (self.save_button, self.connection_button):
             actions.pack_start(button, True, True, 0)
         root.pack_start(actions, False, False, 0)
         note = Gtk.Label(xalign=0, wrap=True, label=(
             "Seleccioná destinos en Linux. El orden del escritorio extendido se ajusta en Windows.\n"
-            "Cerrar este panel no cierra los visores. Usá Desconectar todo para detenerlos."))
+            "Cerrar este panel no cierra los visores. Usá Desconectar para detenerlos."))
         note.get_style_context().add_class("dim-label")
         root.pack_start(note, False, False, 0)
         selected = {s["connector"] for s in config["screens"] if s["enabled"]}
@@ -234,20 +236,37 @@ class ControlWindow(Gtk.ApplicationWindow):
         try:
             self.config = self.read_settings()
             settings.save(self.config)
-            self.message.set_text("Guardado. Conectar / aplicar activa los cambios.")
+            self.message.set_text("Guardado. Los cambios se aplican en la próxima conexión.")
         except Exception as error:
             self.message.set_text(str(error))
 
     def set_busy(self, busy):
         self.busy = busy
         for widget in (self.host, self.count, self.quality, self.list, self.map, self.save_button,
-                       self.connect_button, self.stop_button, self.refresh, self.identify):
+                       self.refresh, self.identify):
             widget.set_sensitive(not busy)
+        self.update_connection_button()
+
+    def update_connection_button(self):
+        self.connection_button.set_label("Desconectar" if self.has_connections else "Conectar")
+        self.connection_button.set_sensitive(not self.busy and self.connection_states_known)
+        style = self.connection_button.get_style_context()
+        style.remove_class("suggested-action" if self.has_connections else "destructive-action")
+        style.add_class("destructive-action" if self.has_connections else "suggested-action")
+
+    def toggle_connection(self, *args):
+        if self.busy or not self.connection_states_known:
+            return
+        if self.has_connections:
+            self.disconnect_all()
+        else:
+            self.connect_all()
 
     def work(self, action, success):
         if self.busy:
             self.message.set_text("Esperá a que termine la operación actual.")
             return
+        self.status_generation += 1
         self.set_busy(True)
 
         def worker():
@@ -262,6 +281,10 @@ class ControlWindow(Gtk.ApplicationWindow):
                 self.set_busy(False)
                 if error:
                     self.message.set_text(error)
+                    # A partial connection/stop may have changed the real state.
+                    self.connection_states_known = False
+                    self.update_connection_button()
+                    self.poll_status()
                 else:
                     success(result)
                 return False
@@ -282,14 +305,26 @@ class ControlWindow(Gtk.ApplicationWindow):
 
     def connected(self, statuses):
         self.show_statuses(statuses)
-        self.message.set_text("Configuración aplicada. Las pantallas seleccionadas reciben Windows.")
+        self.message.set_text("Las pantallas seleccionadas reciben Windows." if self.has_connections
+                              else "No hay pantallas conectadas.")
 
     def disconnect_all(self, *args):
         config = copy.deepcopy(self.config)
-        self.work(lambda: Controller(config).stop(),
-                  lambda _: self.message.set_text("Todos los visores fueron detenidos."))
+        def stop_and_status():
+            controller = Controller(config)
+            controller.stop()
+            return controller.statuses()
+
+        def stopped(statuses):
+            self.show_statuses(statuses)
+            self.message.set_text("Todos los visores fueron detenidos.")
+        self.work(stop_and_status, stopped)
 
     def show_statuses(self, statuses):
+        self.has_connections = any(state.get("state") in {"connecting", "waiting", "streaming"}
+                                   for state in statuses.values())
+        self.connection_states_known = True
+        self.update_connection_button()
         for row in self.rows.values():
             state = statuses.get(row["screen"]["id"], {})
             message = state.get("message", "Detenido")
@@ -303,18 +338,24 @@ class ControlWindow(Gtk.ApplicationWindow):
         if self.busy or self.polling:
             return True
         self.polling = True
+        generation = self.status_generation
         config = copy.deepcopy(self.config)
 
         def worker():
             try:
                 statuses = Controller(config).statuses()
             except Exception:
-                statuses = {}
+                statuses = None
 
             def complete():
                 self.polling = False
-                if not self.closed:
-                    self.show_statuses(statuses)
+                if not self.closed and generation == self.status_generation:
+                    if statuses is None:
+                        self.connection_states_known = False
+                        self.update_connection_button()
+                        self.message.set_text("No se pudo consultar el estado. Reintentando...")
+                    else:
+                        self.show_statuses(statuses)
                 return False
             GLib.idle_add(complete)
         threading.Thread(target=worker, daemon=True).start()

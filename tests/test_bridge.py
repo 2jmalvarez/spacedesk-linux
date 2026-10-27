@@ -53,6 +53,15 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(struct.unpack_from("<II", packet), (8, 0))
         self.assertEqual(packet[8:], bytes(120))
 
+    def test_viewer_declares_spanish_and_does_not_offer_translation(self):
+        html = self.client.VIEWER_HTML
+        self.assertIn('<html lang="es" translate="no">', html)
+        self.assertIn('<meta name="google" content="notranslate">', html)
+        self.assertNotIn('lang="fr"', html)
+        self.assertIn('title="Pantalla completa"', html)
+        self.assertIn("fsBtn.title='Salir de pantalla completa'", html)
+        self.assertIn("modeBtn.title=PAD?'Panel táctil:", html)
+
     def test_intentional_close_notifies_windows_before_socket_shutdown(self):
         client = self.client
         sock = Mock()

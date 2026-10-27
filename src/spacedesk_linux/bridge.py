@@ -623,11 +623,12 @@ def _drop_ws(c):
 # Page viewer (canvas + WebSocket)
 # ---------------------------------------------------------------------------
 VIEWER_HTML = """<!DOCTYPE html>
-<html lang="fr">
+<html lang="es" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>spacedesk viewer</title>
+<title>spacedesk — visor</title>
 <style>
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#000;}
   #wrap{position:fixed;inset:0;background:#000;overflow:hidden;}
@@ -651,8 +652,8 @@ VIEWER_HTML = """<!DOCTYPE html>
 </head>
 <body>
 <div id="wrap"><canvas id="c" width="1920" height="1080"></canvas></div>
-<button id="fs" title="Plein ecran">&#9906;</button>
-<button id="mode" title="Mode pave tactile">&#128433;</button>
+<button id="fs" title="Pantalla completa">&#9906;</button>
+<button id="mode" title="Modo panel táctil">&#128433;</button>
 <div id="status"><span id="message">Conectando al visor...</span>
 <button id="retry" onclick="location.reload()">Reintentar</button></div>
 <script>
@@ -681,8 +682,8 @@ VIEWER_HTML = """<!DOCTYPE html>
   var fsBtn=document.getElementById('fs');
   function updateFsBtn(){
     // toujours visible (opacite geree par le CSS) ; seule l'icone change
-    if(inFs()){ fsBtn.innerHTML='&#10005;'; fsBtn.title='Revenir (quitter le plein ecran)'; }
-    else{ fsBtn.innerHTML='&#9974;'; fsBtn.title='Plein ecran'; }
+    if(inFs()){ fsBtn.innerHTML='&#10005;'; fsBtn.title='Salir de pantalla completa'; }
+    else{ fsBtn.innerHTML='&#9974;'; fsBtn.title='Pantalla completa'; }
   }
   fsBtn.addEventListener('click',function(e){
     e.preventDefault(); e.stopPropagation();
@@ -773,8 +774,8 @@ VIEWER_HTML = """<!DOCTYPE html>
   var modeBtn=document.getElementById('mode');
   function updateModeBtn(){
     modeBtn.innerHTML=PAD?'&#128433;':'&#128070;';
-    modeBtn.title=PAD?'Pave tactile : glisser = curseur, tap = clic, 2 doigts = clic droit/scroll. Toucher pour passer en absolu'
-                     :'Absolu : toucher = position exacte. Toucher pour repasser en pave tactile';
+    modeBtn.title=PAD?'Panel táctil: arrastrar mueve el cursor; tocar hace clic; dos dedos hacen clic derecho o desplazan. Cambiar a modo absoluto'
+                     :'Absoluto: tocar indica la posición exacta. Cambiar a panel táctil';
   }
   modeBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); PAD=!PAD; updateModeBtn(); });
   updateModeBtn();

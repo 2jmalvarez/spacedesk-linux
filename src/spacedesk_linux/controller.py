@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 import time
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
@@ -30,6 +31,32 @@ def device_name(screen):
 
 def profile(screen):
     return CACHE_DIR / ("chrome-" + screen["id"])
+
+
+def configure_browser_profile(screen):
+    """Disable automatic translation offers only in this app's stopped profile."""
+    if browser_pids(screen):
+        raise RuntimeError("El visor debe estar cerrado antes de configurar su perfil.")
+    directory = profile(screen) / "Default"
+    path = directory / "Preferences"
+    try:
+        preferences = json.loads(path.read_text()) if path.exists() else {}
+        if not isinstance(preferences, dict) or not isinstance(preferences.get("translate", {}), dict):
+            raise ValueError("formato inesperado")
+    except (ValueError, OSError) as error:
+        raise RuntimeError(f"No se modificó el perfil del visor: {error}") from error
+    preferences.setdefault("translate", {})["enabled"] = False
+    directory.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(preferences, stream)
+            stream.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def browser_pids(screen):
@@ -181,7 +208,7 @@ class Controller:
             close_browser(screen)
         if not browser_pids(screen):
             directory = profile(screen)
-            directory.mkdir(parents=True, exist_ok=True)
+            configure_browser_profile(screen)
             with (CACHE_DIR / f"{screen['id']}.log").open("a") as log:
                 subprocess.Popen([browser, f"--user-data-dir={directory}", "--no-first-run",
                                   "--no-default-browser-check", "--disable-session-crashed-bubble",

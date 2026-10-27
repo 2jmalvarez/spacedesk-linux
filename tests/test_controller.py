@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import threading
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -21,6 +22,54 @@ class ControllerTests(unittest.TestCase):
         self.assertIn("SPACEDESK_HEIGHT=720\n", text)
         self.assertIn("SPACEDESK_AUTORECONNECT=0\n", text)
         self.assertIn("SPACEDESK_HTTP_HOST=127.0.0.1\n", text)
+
+    def test_new_viewer_profile_disables_translation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(controller, "CACHE_DIR", Path(directory)), \
+                    patch.object(controller, "browser_pids", return_value=[]):
+                controller.configure_browser_profile(self.screen)
+                path = controller.profile(self.screen) / "Default/Preferences"
+                self.assertIs(json.loads(path.read_text())["translate"]["enabled"], False)
+                self.assertEqual(list(path.parent.iterdir()), [path])
+
+    def test_profile_translation_setting_preserves_other_preferences(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            normal = root / "normal-chrome/Preferences"
+            normal.parent.mkdir()
+            normal.write_text('{"translate":{"enabled":true}}')
+            with patch.object(controller, "CACHE_DIR", root / "isolated"), \
+                    patch.object(controller, "browser_pids", return_value=[]):
+                path = controller.profile(self.screen) / "Default/Preferences"
+                path.parent.mkdir(parents=True)
+                original = {"session": {"restore_on_startup": 1},
+                            "translate": {"enabled": True, "recent_target": "es"}}
+                path.write_text(json.dumps(original))
+                controller.configure_browser_profile(self.screen)
+                updated = json.loads(path.read_text())
+            self.assertEqual(updated["session"], original["session"])
+            self.assertEqual(updated["translate"], {"enabled": False, "recent_target": "es"})
+            self.assertIs(json.loads(normal.read_text())["translate"]["enabled"], True)
+
+    def test_running_browser_profile_is_not_modified(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(controller, "CACHE_DIR", Path(directory)), \
+                    patch.object(controller, "browser_pids", return_value=[123]):
+                with self.assertRaisesRegex(RuntimeError, "cerrado"):
+                    controller.configure_browser_profile(self.screen)
+            self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_invalid_profile_preferences_are_not_overwritten(self):
+        for contents in ('{invalid', '[]', '{"translate":false}'):
+            with self.subTest(contents=contents), tempfile.TemporaryDirectory() as directory:
+                with patch.object(controller, "CACHE_DIR", Path(directory)), \
+                        patch.object(controller, "browser_pids", return_value=[]):
+                    path = controller.profile(self.screen) / "Default/Preferences"
+                    path.parent.mkdir(parents=True)
+                    path.write_text(contents)
+                    with self.assertRaisesRegex(RuntimeError, "No se modificó"):
+                        controller.configure_browser_profile(self.screen)
+                    self.assertEqual(path.read_text(), contents)
 
     def test_detect_chrome_rewritten_cmdline_and_ignore_renderers(self):
         process = MagicMock()
