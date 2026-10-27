@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=spacedesk Linux - Desconectar todo
+Comment=Cerrar solo los visores de spacedesk
+Exec="@EXECUTABLE@" stop
+Icon=window-close
+Terminal=false
+Categories=Network;RemoteAccess;

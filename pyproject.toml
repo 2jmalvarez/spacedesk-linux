@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spacedesk-linux-control"
+version = "0.1.0"
+description = "Unofficial X11 spacedesk monitor controller with a small GTK GUI"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+readme = "README.md"
+
+[project.scripts]
+spacedesk-linux = "spacedesk_linux.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=spacedesk Linux
+Comment=Elegir monitores, resoluciones y cantidad de pantallas para Windows (no oficial)
+Exec="@EXECUTABLE@" gui
+Icon=video-display
+Terminal=false
+Categories=Network;RemoteAccess;
