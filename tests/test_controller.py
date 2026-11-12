@@ -113,6 +113,34 @@ class ControllerTests(unittest.TestCase):
             app.connect()
         stop.assert_called_once_with()
 
+    def test_new_viewer_explicitly_uses_x11_even_on_wayland(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = controller.Controller(self.config, [self.display])
+            with patch.object(controller, "RUNTIME_CONFIG", root), \
+                    patch.object(controller, "CACHE_DIR", root), \
+                    patch.object(controller, "status", return_value={"state": "streaming"}), \
+                    patch.object(controller, "browser_pids", side_effect=[[], [], [], [123]]), \
+                    patch.object(controller, "configure_browser_profile"), \
+                    patch.object(controller.subprocess, "run"), \
+                    patch.object(controller.subprocess, "Popen") as popen, \
+                    patch.object(app, "_place"):
+                app._connect_screen(self.screen, self.display, "google-chrome")
+            args = popen.call_args.args[0]
+            self.assertIn("--ozone-platform=x11", args)
+            self.assertIn(f"--user-data-dir={root / ('chrome-' + self.screen['id'])}", args)
+
+    def test_placement_helper_uses_x11_without_changing_desktop_session(self):
+        with patch.dict(controller.os.environ, {"GDK_BACKEND": "wayland",
+                                               "XDG_SESSION_TYPE": "wayland"}), \
+                patch.object(controller, "browser_pids", return_value=[123]), \
+                patch.object(controller.subprocess, "run") as run:
+            controller.Controller(self.config)._place(self.screen, self.display)
+            env = run.call_args.kwargs["env"]
+            self.assertEqual(env["GDK_BACKEND"], "x11")
+            self.assertEqual(env["XDG_SESSION_TYPE"], "wayland")
+            self.assertEqual(controller.os.environ["GDK_BACKEND"], "wayland")
+
     def test_stop_notifies_multiple_services_in_parallel(self):
         second = Display("HDMI-SECOND", 1920, 0, 1920, 1080)
         config_value = config.default_config([self.display, second], "192.0.2.10")

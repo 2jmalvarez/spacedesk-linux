@@ -8,8 +8,9 @@ Panel gráfico sencillo para elegir **qué monitores usar, cuántos y con qué r
 Linux sigue funcionando normalmente en las pantallas que no selecciones.
 
 > **Proyecto no oficial y experimental**, sin afiliación con Datronicsoft.
-> No reemplaza el driver spacedesk de Windows. Esta versión necesita **Linux/X11**;
-> **Wayland no está soportado**.
+> No reemplaza el driver spacedesk de Windows. Necesita **X11 o XWayland**.
+> En Ubuntu/Wayland conserva el escritorio y ejecuta solo el panel y los visores
+> mediante XWayland; no es un backend Wayland nativo.
 
 ## Qué hace
 
@@ -78,7 +79,7 @@ Esta implementación todavía no soporta conexiones que exijan contraseña.
 Entorno gráfico probado: **Ubuntu 24.04, GNOME/X11, Python 3.12 y GTK 3.24**.
 Las pruebas sin interfaz también se ejecutan en CI con Python 3.10, 3.12 y 3.13.
 
-- Sesión **X11/Xorg**, no Wayland.
+- Sesión **X11/Xorg**, o **Wayland con XWayland** accesible mediante `DISPLAY`.
 - Python 3.10 o posterior, PyGObject, GTK 3 y GdkX11.
 - `xrandr`, `xprop` y servicios `systemctl --user` funcionando.
 - **Google Chrome**, recomendado y probado, o Chromium compatible con perfiles personalizados.
@@ -90,16 +91,21 @@ usar los perfiles personalizados o identificar las ventanas.
 
 ## Instalar en una PC Linux nueva
 
-### 1. Iniciar una sesión X11
+### 1. Comprobar acceso a X11 o XWayland
 
-En Ubuntu, cerrar sesión y elegir **Ubuntu en Xorg** en las opciones de la pantalla
-de inicio de sesión, si esa opción está disponible. Podés verificar la sesión con:
+No hace falta cambiar el escritorio ni seleccionar Xfce. En Ubuntu/Wayland el
+panel y los visores usan XWayland automáticamente. Comprobá el acceso con:
 
 ```bash
 echo "$XDG_SESSION_TYPE"
+echo "$DISPLAY"
+xrandr --query
 ```
 
-Debe indicar `x11`. Instalar estas dependencias **no agrega soporte para Wayland**.
+La sesión puede indicar `x11` o `wayland`; `DISPLAY` debe estar definido y
+`xrandr` debe listar los monitores activos. La detección y colocación bajo
+XWayland se verificaron en Ubuntu 26.04/GNOME con tres monitores a escala 100 %.
+El escalado mixto/fraccional y otros compositores requieren validación adicional.
 
 ### 2. Instalar dependencias
 
@@ -248,7 +254,7 @@ puertos hacia Internet ni utilizar esta app en redes no confiables.**
 
 | Problema | Qué revisar |
 |---|---|
-| Sesión Wayland | Iniciar X11/Xorg; no basta con tener `xrandr` instalado. |
+| Sin acceso a XWayland | Comprobar `DISPLAY` y `xrandr --query`; no hace falta cambiar a Xfce. |
 | No aparece un monitor | Activarlo primero en Linux y pulsar Actualizar. Solo se listan salidas activas. |
 | Windows no envía imagen | IP, conectividad, consola spacedesk y firewall TCP 28252. |
 | Pantallas duplicadas en Windows | Elegir Extender, no Duplicar, en la configuración de Windows. |
@@ -318,7 +324,7 @@ configuración, caché y respaldos; no borra el checkout ni el navegador habitua
 ## Limitaciones y licencia
 
 - Cliente no oficial: futuras versiones del driver pueden cambiar el protocolo.
-- X11 solamente; no soporte de Wayland, audio o autenticación por contraseña.
+- X11/XWayland; sin backend Wayland nativo, audio ni autenticación por contraseña.
 - El teclado local no se reenvía. Usar el teclado/mouse del equipo Windows para trabajar.
 - No se habilita conexión ni inicio automático al iniciar sesión.
 - No se distribuye ni instala el driver propietario de Windows.

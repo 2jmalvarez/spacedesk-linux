@@ -1,7 +1,11 @@
 """Small GTK 3 control panel. All network/process work runs off the UI thread."""
 import copy
+import os
 import threading
 
+# Keep monitor coordinates, overlays and viewer placement in the same X11 space.
+# On Wayland this selects XWayland for this process, not a different desktop.
+os.environ["GDK_BACKEND"] = "x11"
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
@@ -166,21 +170,24 @@ class ControlWindow(Gtk.ApplicationWindow):
 
     def build_rows(self):
         self.updating = True
+        self.displays = [d for d in self.displays if d.width > 0 and d.height > 0]
         for child in self.list.get_children():
             self.list.remove(child)
         self.rows = {}
         available = {d.connector: d for d in self.displays}
         for screen in self.config["screens"]:
             display = available.get(screen["connector"])
+            if display is None:
+                continue
             row = Gtk.Box(spacing=10)
-            check = Gtk.CheckButton(label=screen["connector"] + (" (no disponible)" if display is None else ""))
+            check = Gtk.CheckButton(label=screen["connector"])
             check.set_active(screen["enabled"])
             check.connect("toggled", self.selection_changed)
             row.pack_start(check, False, False, 0)
             combo = Gtk.ComboBoxText()
-            native = display.native if display else (screen["width"] or 0, screen["height"] or 0)
+            native = display.native
             combo.append("native", f"Nativa ({native[0]} × {native[1]})")
-            modes = list(display.modes) if display else []
+            modes = list(display.modes)
             configured = (screen["width"], screen["height"])
             if configured[0] is not None and configured not in modes:
                 modes.append(configured)
@@ -193,7 +200,7 @@ class ControlWindow(Gtk.ApplicationWindow):
             self.list.pack_start(row, False, False, 0)
             self.rows[screen["connector"]] = {"check": check, "resolution": combo,
                                                 "status": label, "screen": screen}
-        self.count.set_range(0, max(len(self.displays), sum(s["enabled"] for s in self.config["screens"])))
+        self.count.set_range(0, len(self.rows))
         self.updating = False
         self.selection_changed()
         self.list.show_all()
@@ -226,7 +233,11 @@ class ControlWindow(Gtk.ApplicationWindow):
         value = copy.deepcopy(self.config)
         value.update(host=self.host.get_text().strip(), quality=self.quality.get_value_as_int())
         for screen in value["screens"]:
-            row = self.rows[screen["connector"]]
+            row = self.rows.get(screen["connector"])
+            if row is None:
+                # Retain the assignment and resolution, but never connect a hidden destination.
+                screen["enabled"] = False
+                continue
             screen["enabled"] = row["check"].get_active()
             resolution = row["resolution"].get_active_id()
             screen["width"], screen["height"] = (None, None) if resolution == "native" else map(int, resolution.split("x"))

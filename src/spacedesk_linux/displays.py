@@ -1,4 +1,4 @@
-"""Discover active physical X11 displays without changing their configuration."""
+"""Discover X11/XWayland displays without changing their configuration."""
 import os
 import re
 import subprocess
@@ -34,6 +34,8 @@ def parse_xrandr(text):
             if not geometry:
                 continue
             width, height, x, y = map(int, geometry.groups())
+            if width <= 0 or height <= 0:
+                continue
             current = Display(match[1], x, y, width, height, "primary" in match[2].split())
             displays.append(current)
         elif current is not None:
@@ -48,8 +50,8 @@ def parse_xrandr(text):
 
 
 def detect():
-    if os.environ.get("XDG_SESSION_TYPE") == "wayland":
-        raise RuntimeError("Esta version necesita una sesion X11; Wayland aun no esta soportado.")
+    if os.environ.get("XDG_SESSION_TYPE") == "wayland" and not os.environ.get("DISPLAY"):
+        raise RuntimeError("No hay acceso a XWayland (DISPLAY). Se necesita XWayland o una sesion X11.")
     result = subprocess.run(["xrandr", "--query"], capture_output=True, text=True,
                             check=True, timeout=5)
     displays = parse_xrandr(result.stdout)

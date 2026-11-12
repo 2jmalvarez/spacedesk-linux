@@ -12,10 +12,63 @@ from unittest.mock import patch
 
 @unittest.skipUnless(os.environ.get("SPACEDESK_TEST_GUI") == "1", "Opt-in real-display GTK test")
 class GuiTests(unittest.TestCase):
+    def test_unavailable_monitors_are_hidden_and_not_selected_for_connection(self):
+        from spacedesk_linux import config
+        from spacedesk_linux.displays import Display
+        from spacedesk_linux.gui import ControlWindow, Gtk
+
+        active = Display("HDMI-ACTIVE", 0, 0, 1920, 1080)
+        missing = Display("HDMI-OLD", 1920, 0, 1366, 768)
+        invalid = Display("HDMI-ZERO", 0, 0, 0, 0)
+        saved = config.default_config([active, missing, invalid], "192.0.2.10")
+        saved["screens"][1].update(enabled=True, width=1280, height=720)
+        saved["screens"][2]["enabled"] = True
+        app = Gtk.Application.get_default() or Gtk.Application()
+        if not app.get_is_registered():
+            app.register()
+        with patch.object(ControlWindow, "poll_status", return_value=True):
+            window = ControlWindow(app, saved, [active, invalid])
+            try:
+                self.assertEqual(set(window.rows), {active.connector})
+                self.assertEqual(len(window.map.get_children()), 1)
+                self.assertEqual(window.count.get_adjustment().get_upper(), 1)
+                self.assertEqual(window.count.get_value_as_int(), 1)
+                value = window.read_settings()
+                config.validate(value, window.displays, connecting=True)
+                self.assertFalse(value["screens"][1]["enabled"])
+                self.assertFalse(value["screens"][2]["enabled"])
+                self.assertTrue(saved["screens"][1]["enabled"])
+                self.assertEqual(value["screens"][1], dict(saved["screens"][1], enabled=False))
+                window.count.set_value(0)
+                self.assertFalse(window.rows[active.connector]["check"].get_active())
+
+                def run_now(action, success):
+                    success(action())
+
+                with patch.object(window, "work", side_effect=run_now), \
+                        patch("spacedesk_linux.gui.detect", return_value=[active, missing]):
+                    window.refresh_displays()
+                self.assertEqual(set(window.rows), {active.connector, missing.connector})
+                self.assertFalse(window.rows[missing.connector]["check"].get_active())
+                self.assertEqual(window.rows[missing.connector]["resolution"].get_active_id(), "1280x720")
+                self.assertEqual(window.config["screens"][1]["id"], saved["screens"][1]["id"])
+                window.count.set_value(2)
+                self.assertEqual(window.count.get_value_as_int(), 2)
+
+                with patch.object(window, "work", side_effect=run_now), \
+                        patch("spacedesk_linux.gui.detect", return_value=[active]):
+                    window.refresh_displays()
+                self.assertEqual(set(window.rows), {active.connector})
+                self.assertEqual(window.count.get_value_as_int(), 1)
+                self.assertFalse(window.read_settings()["screens"][1]["enabled"])
+            finally:
+                window.destroy()
+
     def test_cold_import_selects_gtk3_and_gdk3(self):
         result = subprocess.run([sys.executable, "-B", "-c",
                                  "from spacedesk_linux.gui import Gtk, Gdk; "
-                                 "assert Gtk.get_major_version() == 3"],
+                                 "assert Gtk.get_major_version() == 3; "
+                                 "assert type(Gdk.Display.get_default()).__name__ == 'X11Display'"],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("PyGIWarning", result.stderr)

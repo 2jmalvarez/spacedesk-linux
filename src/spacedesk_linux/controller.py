@@ -210,7 +210,8 @@ class Controller:
             directory = profile(screen)
             configure_browser_profile(screen)
             with (CACHE_DIR / f"{screen['id']}.log").open("a") as log:
-                subprocess.Popen([browser, f"--user-data-dir={directory}", "--no-first-run",
+                subprocess.Popen([browser, "--ozone-platform=x11",
+                                  f"--user-data-dir={directory}", "--no-first-run",
                                   "--no-default-browser-check", "--disable-session-crashed-bubble",
                                   f"--app=http://127.0.0.1:{screen['port']}/"],
                                  stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
@@ -226,6 +227,7 @@ class Controller:
 
     def _place(self, screen, display):
         env = os.environ.copy()
+        env["GDK_BACKEND"] = "x11"
         root = str(Path(__file__).resolve().parent.parent)
         env["PYTHONPATH"] = root + os.pathsep + env.get("PYTHONPATH", "")
         subprocess.run([sys.executable, "-m", "spacedesk_linux.window", "--pids",
