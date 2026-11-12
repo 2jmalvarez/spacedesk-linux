@@ -1,6 +1,7 @@
 import argparse
 import json
 
+from . import __version__
 from . import config as settings
 from .controller import Controller
 from .displays import detect
@@ -8,6 +9,7 @@ from .displays import detect
 
 def main():
     parser = argparse.ArgumentParser(description="Control no oficial de spacedesk para Linux con X11/XWayland")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("gui")
     commands.add_parser("connect")

@@ -91,6 +91,48 @@ usar los perfiles personalizados o identificar las ventanas.
 
 ## Instalar en una PC Linux nueva
 
+### Opción recomendada: paquete `.deb` para Ubuntu/Debian
+
+Si te compartieron el archivo `spacedesk-linux_<version>_all.deb`, no necesitás
+Git ni descargar el código. En la carpeta donde lo guardaste, ejecutá:
+
+```bash
+sudo apt install ./spacedesk-linux_*_all.deb
+systemctl --user daemon-reload
+```
+
+También podés abrir el `.deb` con el instalador de paquetes de tu distribución.
+APT instala las dependencias de Python, GTK y X11 desde los repositorios configurados.
+Necesitás una sesión gráfica con systemd por usuario y acceso a X11/XWayland.
+**Google Chrome o Chromium nativo se instala por separado**; se comprueba al conectar.
+En Ubuntu se recomienda Google Chrome desde su web oficial: Chromium por Snap/Flatpak
+no está validado. El paquete no incluye ni instala el driver de Windows.
+
+Después, abrí **Aplicaciones → spacedesk Linux**, ingresá la IP de Windows y elegí
+las pantallas. La versión instalada aparece en la **esquina inferior derecha del
+panel** y con `spacedesk-linux --version`. No se conectan pantallas automáticamente.
+
+Para actualizar, desconectá los visores y cerrá el panel antes de instalar el nuevo
+`.deb` con el mismo comando. Se conservan preferencias y perfiles. Para desinstalar:
+
+```bash
+spacedesk-linux stop
+sudo apt remove spacedesk-linux
+systemctl --user daemon-reload
+```
+
+Si ya usabas `scripts/install-user.sh`, desconectá y ejecutá
+`./scripts/uninstall-user.sh` **antes de instalar el `.deb`**. Conserva la configuración
+y evita que el ejecutable y servicio antiguos de tu usuario oculten los del paquete.
+No combines ambos métodos. El `.deb` se instala para todos los usuarios del equipo,
+pero cada uno mantiene su propia configuración y sus perfiles privados.
+
+El paquete se genera localmente como se explica en **Construir el instalador**;
+no se presupone que ya exista una descarga publicada. Para otras distribuciones,
+usá el método por usuario que sigue, con sus dependencias equivalentes.
+
+### Alternativa: instalación por usuario desde el código
+
 ### 1. Comprobar acceso a X11 o XWayland
 
 No hace falta cambiar el escritorio ni seleccionar Xfce. En Ubuntu/Wayland el
@@ -210,6 +252,8 @@ Si `~/.local/bin` no está en PATH, anteponer esa ruta a cada comando.
 
 ## Actualizar o migrar una instalación anterior
 
+Los comandos siguientes corresponden a la instalación por usuario, no al `.deb`.
+
 Cerrar el panel, detener los visores y actualizar la copia instalada:
 
 ```bash
@@ -244,6 +288,13 @@ comandos `launch.py --both` y `launch.py --stop` quedan como accesos de compatib
 
 Se respetan los directorios XDG. El repositorio no contiene una IP personal,
 credenciales, perfiles de Chrome, registros ni instaladores propietarios.
+
+Con el `.deb`, el código está en `/usr/lib/spacedesk-linux/`, el ejecutable en
+`/usr/bin/spacedesk-linux` y la plantilla del servicio en `/usr/lib/systemd/user/`.
+La configuración y los perfiles siguen siendo privados de cada usuario, en las
+rutas XDG de la tabla; el servicio usa el directorio de configuración del gestor
+systemd del usuario. Si personalizás `XDG_CONFIG_HOME`, usá el mismo valor en la
+sesión gráfica y en ese gestor.
 
 Los servidores HTTP/WebSocket solo escuchan en `127.0.0.1` y validan el host/origen
 de las solicitudes. El transporte actual hacia Windows **no está cifrado** y no
@@ -300,6 +351,22 @@ La suite incluye un servidor Windows **simulado en localhost** para comprobar qu
 cerrar un visor y enviar `SIGTERM` emiten Disconnect y no bloquean el servidor HTTP.
 GitHub Actions ejecuta las pruebas sin GUI con Python 3.10, 3.12 y 3.13.
 
+### Construir el instalador
+
+En una máquina Ubuntu/Debian con Python 3.10+ y `dpkg-deb` (paquete `dpkg`):
+
+```bash
+python3 scripts/build_deb.py
+```
+
+Genera `dist/spacedesk-linux_<version>_all.deb`, listo para compartir con otros usuarios.
+No requiere root, no descarga dependencias y no modifica la instalación local.
+La versión se toma de `src/spacedesk_linux/__init__.py`, igual que el panel,
+el comando `--version` y los metadatos Python. El paquete es independiente de la
+arquitectura: contiene Python y usa las dependencias nativas del equipo destino.
+La prueba de empaquetado construye y extrae el `.deb` en un directorio temporal;
+no lo instala ni inicia servicios. Se omite si no está disponible `dpkg-deb`.
+
 Para una prueba real del protocolo, cerrar primero los visores:
 
 ```bash
@@ -311,6 +378,9 @@ Esta última prueba **crea pantallas temporales en Windows**, usa la configuraci
 local y rechaza ejecutarse si ya hay visores activos para no competir por sus identidades.
 
 ## Desinstalar
+
+Para el `.deb`, usá `sudo apt remove spacedesk-linux` tras desconectar los visores.
+Los comandos siguientes son solo para la instalación por usuario.
 
 Desde el checkout:
 

@@ -12,6 +12,7 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk
 
 from . import config as settings
+from . import __version__
 from .controller import Controller
 from .displays import detect
 
@@ -136,6 +137,10 @@ class ControlWindow(Gtk.ApplicationWindow):
             "Cerrar este panel no cierra los visores. Usá Desconectar para detenerlos."))
         note.get_style_context().add_class("dim-label")
         root.pack_start(note, False, False, 0)
+        self.version_label = Gtk.Label(label=f"v{__version__}", xalign=1)
+        self.version_label.set_halign(Gtk.Align.END)
+        self.version_label.get_style_context().add_class("dim-label")
+        root.pack_end(self.version_label, False, False, 0)
         selected = {s["connector"] for s in config["screens"] if s["enabled"]}
         free = next((d for d in displays if d.connector not in selected), None)
         if free:

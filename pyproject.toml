@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spacedesk-linux-control"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Unofficial X11 spacedesk monitor controller with a small GTK GUI"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
@@ -15,3 +15,6 @@ spacedesk-linux = "spacedesk_linux.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "spacedesk_linux.__version__"}

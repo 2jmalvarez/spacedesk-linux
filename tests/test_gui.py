@@ -14,6 +14,7 @@ from unittest.mock import patch
 class GuiTests(unittest.TestCase):
     def test_unavailable_monitors_are_hidden_and_not_selected_for_connection(self):
         from spacedesk_linux import config
+        from spacedesk_linux import __version__
         from spacedesk_linux.displays import Display
         from spacedesk_linux.gui import ControlWindow, Gtk
 
@@ -29,6 +30,10 @@ class GuiTests(unittest.TestCase):
         with patch.object(ControlWindow, "poll_status", return_value=True):
             window = ControlWindow(app, saved, [active, invalid])
             try:
+                self.assertEqual(window.version_label.get_text(), f"v{__version__}")
+                self.assertEqual(window.version_label.get_halign(), Gtk.Align.END)
+                self.assertEqual(window.version_label.get_xalign(), 1)
+                self.assertTrue(window.version_label.get_visible())
                 self.assertEqual(set(window.rows), {active.connector})
                 self.assertEqual(len(window.map.get_children()), 1)
                 self.assertEqual(window.count.get_adjustment().get_upper(), 1)
